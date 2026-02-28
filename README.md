@@ -35,16 +35,10 @@ nupm install --path .
 
 ### Manual
 
-Copy `dagger.nu` anywhere on your `NU_LIB_DIRS` path, then add to `config.nu`:
+Clone the repo, then add to `config.nu`:
 
 ```nushell
-use dagger.nu *
-```
-
-Or source it directly:
-
-```nushell
-use /path/to/dagger.nu *
+use /path/to/dagger.nu/completions/dagger.nu *
 ```
 
 ## Usage
