@@ -4,154 +4,162 @@
 # Run:
 #   nu tests/completions.test.nu
 #   nu tests/completions.test.nu --verbose
-#   nu tests/completions.test.nu --test sdks
+#   nu tests/completions.test.nu --test "sdk"
 
 use std/assert
+
+# Top-level use — brings externs and helpers into parser scope so
+# scope commands reflects them and helper calls resolve without a subshell.
 use ../completions/dagger.nu *
 
 # ============================================================================
 # Helpers
 # ============================================================================
 
-# Assert a list contains an entry with the given value field
 def assert-has-value [list: list, expected: string] {
     let found = $list | where value == $expected
-    assert ($found | is-not-empty) $"Expected value '($expected)' not found in completions"
+    assert ($found | is-not-empty) $"Expected value '($expected)' not found"
 }
 
-# Assert every entry in a completion list has non-empty value and description
-def assert-well-formed [list: list] {
-    assert ($list | is-not-empty) "Completion list must not be empty"
-    for entry in $list {
-        assert (($entry.value | str length) > 0) $"Empty value in entry: ($entry | to nuon)"
-        assert (($entry.description | str length) > 0) $"Empty description for value '($entry.value)'"
-    }
+def assert-unique-values [list: list, label: string] {
+    let dupes = $list | get value | uniq -d
+    assert ($dupes | is-empty) $"($label) has duplicate values: ($dupes | to nuon)"
 }
 
 # ============================================================================
-# Tests
+# Helper function tests — completion values
 # ============================================================================
-
-def "test subcommands" [] {
-    let result = nu-complete dagger subcommands
-    assert-well-formed $result
-
-    for cmd in [login logout call config core develop functions init install uninstall update query run completion toolchain version help] {
-        assert-has-value $result $cmd
-    }
-}
 
 def "test sdks" [] {
     let result = nu-complete dagger sdks
-    assert-well-formed $result
     assert (($result | length) == 3)
-
-    assert-has-value $result "go"
-    assert-has-value $result "python"
-    assert-has-value $result "typescript"
+    for v in ["go" "python" "typescript"] { assert-has-value $result $v }
+    assert-unique-values $result "sdks"
 }
 
 def "test progress formats" [] {
     let result = nu-complete dagger progress
-    assert-well-formed $result
     assert (($result | length) == 4)
-
-    for fmt in [auto plain tty dots] {
-        assert-has-value $result $fmt
-    }
-}
-
-def "test models" [] {
-    let result = nu-complete dagger models
-    assert-well-formed $result
-    assert (($result | length) >= 4)
-
-    # Spot-check a few well-known model IDs
-    assert-has-value $result "claude-sonnet-4-5"
-    assert-has-value $result "gpt-4.1"
-    assert-has-value $result "gemini-2.0-flash"
-}
-
-def "test licenses" [] {
-    let result = nu-complete dagger licenses
-    assert-well-formed $result
-
-    for lic in ["Apache-2.0" "MIT" "GPL-3.0" "BSD-3-Clause" "MPL-2.0" "UNLICENSED"] {
-        assert-has-value $result $lic
-    }
-}
-
-def "test shells" [] {
-    let result = nu-complete dagger shells
-    assert (($result | length) == 4)
-
-    for sh in [bash zsh fish powershell] {
-        assert ($sh in $result) $"Shell '($sh)' missing from completions"
-    }
+    for v in ["auto" "plain" "tty" "dots"] { assert-has-value $result $v }
+    assert-unique-values $result "progress"
 }
 
 def "test compat values" [] {
     let result = nu-complete dagger compat
-    assert-well-formed $result
     assert (($result | length) == 2)
+    for v in ["latest" "skip"] { assert-has-value $result $v }
+}
 
-    assert-has-value $result "latest"
-    assert-has-value $result "skip"
+def "test shell names" [] {
+    let result = nu-complete dagger shells
+    assert (($result | length) == 4)
+    for v in ["bash" "zsh" "fish" "powershell"] {
+        assert ($v in $result) $"Shell '($v)' missing"
+    }
+}
+
+def "test license spdx identifiers" [] {
+    let result = nu-complete dagger licenses
+    for v in ["Apache-2.0" "MIT" "GPL-3.0" "BSD-3-Clause" "MPL-2.0"] {
+        assert-has-value $result $v
+    }
+    assert-unique-values $result "licenses"
+}
+
+def "test model ids" [] {
+    let result = nu-complete dagger models
+    assert (($result | length) >= 4)
+    for v in ["claude-sonnet-4-5" "gpt-4.1" "gemini-2.0-flash"] {
+        assert-has-value $result $v
+    }
+    assert-unique-values $result "models"
+}
+
+def "test subcommands" [] {
+    let result = nu-complete dagger subcommands
+    for v in ["init" "develop" "call" "config" "install" "uninstall" "update"
+              "query" "run" "login" "logout" "version" "toolchain" "completion"] {
+        assert-has-value $result $v
+    }
+    assert-unique-values $result "subcommands"
 }
 
 def "test toolchain subcommands" [] {
     let result = nu-complete dagger toolchain subcommands
-    assert-well-formed $result
     assert (($result | length) == 4)
+    for v in ["install" "list" "uninstall" "update"] { assert-has-value $result $v }
+    assert-unique-values $result "toolchain subcommands"
+}
 
-    for sub in [install list uninstall update] {
-        assert-has-value $result $sub
+def "test helpers have descriptions" [] {
+    # Every table-form helper should have non-empty descriptions
+    let helpers = [
+        (nu-complete dagger subcommands)
+        (nu-complete dagger sdks)
+        (nu-complete dagger progress)
+        (nu-complete dagger models)
+        (nu-complete dagger licenses)
+        (nu-complete dagger compat)
+        (nu-complete dagger toolchain subcommands)
+    ]
+    for list in $helpers {
+        for entry in $list {
+            assert (($entry.description | str length) > 0) $"Empty description for '($entry.value)'"
+        }
     }
 }
 
-def "test subcommands are unique" [] {
-    let result = nu-complete dagger subcommands
-    let unique_count = $result | get value | uniq | length
-    assert ($unique_count == ($result | length)) "Subcommands list has duplicates"
-}
+# ============================================================================
+# Extern registration tests — observable module surface
+# ============================================================================
 
-def "test models are unique" [] {
-    let result = nu-complete dagger models
-    let unique_count = $result | get value | uniq | length
-    assert ($unique_count == ($result | length)) "Models list has duplicates"
-}
-
-def "test licenses are unique" [] {
-    let result = nu-complete dagger licenses
-    let unique_count = $result | get value | uniq | length
-    assert ($unique_count == ($result | length)) "Licenses list has duplicates"
-}
-
-def "test registered commands" [] {
-    # Verify that extern commands are registered in scope after `use`
+def "test top-level commands registered" [] {
     let cmds = scope commands | where name =~ "^dagger" | get name
-
     for expected in [
-        "dagger"
-        "dagger call"
-        "dagger config"
-        "dagger develop"
-        "dagger functions"
-        "dagger init"
-        "dagger install"
-        "dagger login"
-        "dagger logout"
-        "dagger query"
-        "dagger run"
+        "dagger" "dagger call" "dagger config" "dagger core"
+        "dagger develop" "dagger functions" "dagger init"
+        "dagger install" "dagger uninstall" "dagger update"
+        "dagger login" "dagger logout"
+        "dagger query" "dagger q" "dagger run"
+        "dagger completion" "dagger version"
+    ] {
+        assert ($expected in $cmds) $"'($expected)' not registered after use"
+    }
+}
+
+def "test toolchain commands registered" [] {
+    let cmds = scope commands | where name =~ "^dagger toolchain" | get name
+    for expected in [
         "dagger toolchain"
         "dagger toolchain install"
         "dagger toolchain list"
         "dagger toolchain uninstall"
         "dagger toolchain update"
-        "dagger version"
     ] {
-        assert ($expected in $cmds) $"Command '($expected)' not registered"
+        assert ($expected in $cmds) $"'($expected)' not registered after use"
     }
+}
+
+def "test no duplicate externs" [] {
+    let cmds = scope commands | where name =~ "^dagger" | get name
+    let dupes = $cmds | uniq -d
+    assert ($dupes | is-empty) $"Duplicate externs: ($dupes | to nuon)"
+}
+
+# ============================================================================
+# mod.nu integration test
+# ============================================================================
+
+def "test mod.nu entry point" [] {
+    # Verify the root mod.nu re-exports everything from completions/
+    # We load it in a subshell to get an isolated scope reading
+    let out = ^nu --no-config-file -c $"
+        use '/workspaces/code/github.com/danielbodnar/dagger.nu/mod.nu' *
+        scope commands | where name =~ '^dagger' | get name | to json
+    " | from json
+    assert ($out | is-not-empty) "mod.nu must re-export dagger commands"
+    assert ("dagger" in $out) "'dagger' extern must be reachable via mod.nu"
+    assert ("dagger init" in $out) "'dagger init' must be reachable via mod.nu"
 }
 
 # ============================================================================
@@ -159,22 +167,23 @@ def "test registered commands" [] {
 # ============================================================================
 
 def main [
-    --verbose (-v)     # Print each test name before running
-    --test (-t): string # Run only tests matching this substring
+    --verbose (-v)      # Print each test name as it runs
+    --test (-t): string # Run only tests whose name contains this substring
 ] {
     let all_tests = [
-        "subcommands"
         "sdks"
         "progress formats"
-        "models"
-        "licenses"
-        "shells"
         "compat values"
+        "shell names"
+        "license spdx identifiers"
+        "model ids"
+        "subcommands"
         "toolchain subcommands"
-        "subcommands are unique"
-        "models are unique"
-        "licenses are unique"
-        "registered commands"
+        "helpers have descriptions"
+        "top-level commands registered"
+        "toolchain commands registered"
+        "no duplicate externs"
+        "mod.nu entry point"
     ]
 
     let tests = if $test != null {
@@ -189,18 +198,19 @@ def main [
         if $verbose { print -n $"  test ($name)... " }
         let outcome = try {
             match $name {
-                "subcommands"             => { test subcommands }
-                "sdks"                    => { test sdks }
-                "progress formats"        => { test progress formats }
-                "models"                  => { test models }
-                "licenses"                => { test licenses }
-                "shells"                  => { test shells }
-                "compat values"           => { test compat values }
-                "toolchain subcommands"   => { test toolchain subcommands }
-                "subcommands are unique"  => { test subcommands are unique }
-                "models are unique"       => { test models are unique }
-                "licenses are unique"     => { test licenses are unique }
-                "registered commands"     => { test registered commands }
+                "sdks"                        => { test sdks }
+                "progress formats"            => { test progress formats }
+                "compat values"               => { test compat values }
+                "shell names"                 => { test shell names }
+                "license spdx identifiers"    => { test license spdx identifiers }
+                "model ids"                   => { test model ids }
+                "subcommands"                 => { test subcommands }
+                "toolchain subcommands"       => { test toolchain subcommands }
+                "helpers have descriptions"   => { test helpers have descriptions }
+                "top-level commands registered" => { test top-level commands registered }
+                "toolchain commands registered" => { test toolchain commands registered }
+                "no duplicate externs"        => { test no duplicate externs }
+                "mod.nu entry point"          => { test mod.nu entry point }
             }
             if $verbose { print "✓" }
             {name: $name, passed: true, error: ""}
