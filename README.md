@@ -38,6 +38,12 @@ nupm install --path .
 Clone the repo, then add to `config.nu`:
 
 ```nushell
+use /path/to/dagger.nu/mod.nu *
+```
+
+Or, if you prefer to load only the completions file directly:
+
+```nushell
 use /path/to/dagger.nu/completions/dagger.nu *
 ```
 

@@ -153,8 +153,9 @@ def "test no duplicate externs" [] {
 def "test mod.nu entry point" [] {
     # Verify the root mod.nu re-exports everything from completions/
     # We load it in a subshell to get an isolated scope reading
+    let mod-path = ([$env.FILE_PWD ".." "mod.nu"] | path join | path expand)
     let out = ^nu --no-config-file -c $"
-        use '/workspaces/code/github.com/danielbodnar/dagger.nu/mod.nu' *
+        use '($mod-path)' *
         scope commands | where name =~ '^dagger' | get name | to json
     " | from json
     assert ($out | is-not-empty) "mod.nu must re-export dagger commands"
