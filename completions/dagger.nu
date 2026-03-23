@@ -10,7 +10,7 @@
 # Completion Helpers
 # ============================================================================
 
-def "nu-complete dagger subcommands" [] {
+export def "nu-complete dagger subcommands" [] {
     [
         [value description];
         [login         "Log in to Dagger Cloud"]
@@ -33,7 +33,7 @@ def "nu-complete dagger subcommands" [] {
     ]
 }
 
-def "nu-complete dagger sdks" [] {
+export def "nu-complete dagger sdks" [] {
     [
         [value description];
         [go         "Go SDK"]
@@ -42,7 +42,7 @@ def "nu-complete dagger sdks" [] {
     ]
 }
 
-def "nu-complete dagger progress" [] {
+export def "nu-complete dagger progress" [] {
     [
         [value description];
         [auto  "Automatically detect output format (default)"]
@@ -52,7 +52,7 @@ def "nu-complete dagger progress" [] {
     ]
 }
 
-def "nu-complete dagger models" [] {
+export def "nu-complete dagger models" [] {
     [
         [value description];
         [claude-sonnet-4-5   "Anthropic Claude Sonnet 4.5"]
@@ -65,7 +65,7 @@ def "nu-complete dagger models" [] {
     ]
 }
 
-def "nu-complete dagger licenses" [] {
+export def "nu-complete dagger licenses" [] {
     [
         [value description];
         [Apache-2.0   "Apache License 2.0 (default)"]
@@ -78,11 +78,11 @@ def "nu-complete dagger licenses" [] {
     ]
 }
 
-def "nu-complete dagger shells" [] {
+export def "nu-complete dagger shells" [] {
     [bash zsh fish powershell]
 }
 
-def "nu-complete dagger compat" [] {
+export def "nu-complete dagger compat" [] {
     [
         [value description];
         [latest "Use the latest engine API version (default)"]
@@ -90,7 +90,7 @@ def "nu-complete dagger compat" [] {
     ]
 }
 
-def "nu-complete dagger toolchain subcommands" [] {
+export def "nu-complete dagger toolchain subcommands" [] {
     [
         [value description];
         [install   "Install a toolchain to the current module"]
